@@ -7,6 +7,12 @@ Only once the recording exists does the app unlock the reference answer.
 It is built for one person — whoever is running it — and it keeps everything on that person's own
 machine. There is no backend, no account and no network call.
 
+**Live demo → [interview-gacha.vercel.app](https://interview-gacha.vercel.app)**
+
+The demo runs on the fictional sample bank that ships with this repo, because the real question bank
+is deliberately gitignored — see [Your data](#your-data). Everything you record on the demo stays in
+your own browser's IndexedDB and is never uploaded anywhere.
+
 ```
 draw a question  →  answer it out loud and record  →  rate how it felt  →  unlock the answer
                                           ↓

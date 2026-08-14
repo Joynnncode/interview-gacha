@@ -9,3 +9,5 @@ recordings-export/
 .vscode/
 .idea/
 *.tsbuildinfo
+.vercel
+.env*
