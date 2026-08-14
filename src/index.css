@@ -1,0 +1,187 @@
+@import 'tailwindcss';
+
+/*
+ * Visual tone: cute, soft, tactile. A physical toy, not a productivity tool.
+ *
+ * Every colour the app uses is defined here as a token. There are no hex codes
+ * in components. Nothing red, nothing corporate blue, no sharp corners.
+ *
+ * Fonts are a system rounded stack on purpose — loading a webfont would mean a
+ * third-party request, and this app makes none.
+ */
+@theme {
+  /* Surfaces — cream page, warm grey for the recessed second level */
+  --color-cream: #fdfbf7;
+  --color-cream-deep: #f5f1ea;
+  --color-card: #ffffff;
+
+  /* Text — warm black, never pure black */
+  --color-ink: #3d3a36;
+  --color-ink-soft: #6f6a63;
+  --color-ink-faint: #a29b92;
+
+  /* Category colours */
+  --color-behavioural: #ffb5a7;
+  --color-behavioural-deep: #f08c7a;
+  --color-tech: #a8e6cf;
+  --color-tech-deep: #66c6a3;
+
+  /* Accent */
+  --color-peach: #ff9a76;
+  --color-peach-deep: #ef7f57;
+
+  /* SSR */
+  --color-gold: #ffd93d;
+  --color-gold-deep: #e8b923;
+
+  /* Rarity tints, used for capsule and card edges */
+  --color-rarity-n: #e6e0d6;
+  --color-rarity-r: #bcd9ef;
+  --color-rarity-sr: #d8c3f0;
+
+  /* Rounded sans-serif. SF Rounded on macOS, sensible fallbacks elsewhere. */
+  --font-sans:
+    ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', 'Quicksand', 'Nunito',
+    system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Large radii */
+  --radius-toy: 1.25rem; /* 20px */
+  --radius-toy-lg: 1.5rem; /* 24px */
+
+  /* Soft shadows: wide blur, low opacity */
+  --shadow-soft: 0 10px 30px -12px rgb(61 58 54 / 0.18);
+  --shadow-lift: 0 18px 45px -18px rgb(61 58 54 / 0.26);
+  --shadow-inset-toy: inset 0 -3px 0 0 rgb(61 58 54 / 0.06);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Reduced motion. Honoured from the OS by default; the settings toggle adds
+ * data-reduced-motion="true" to <html> so it works without a system preference.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* The one place a gradient is allowed to be loud: SSR. */
+.ssr-rainbow {
+  background-image: linear-gradient(
+    115deg,
+    #ffd93d 0%,
+    #ffb5a7 22%,
+    #ff9a76 40%,
+    #d8c3f0 58%,
+    #a8e6cf 78%,
+    #ffd93d 100%
+  );
+  background-size: 250% 250%;
+  animation: ssr-shimmer 7s ease infinite;
+}
+
+@keyframes ssr-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/*
+ * The tactile press.
+ *
+ * Anything you can click gets this: lift and grow very slightly on hover with a
+ * deeper shadow, then press down and shrink a touch on click. It is the main
+ * thing that makes the app feel like a physical toy rather than a form.
+ *
+ * It lives in CSS rather than in a Tailwind class string for one reason: reduced
+ * motion has to be able to remove the transform entirely. A transform-on-hover
+ * with transitions disabled would still jump, which is exactly what someone who
+ * asked for reduced motion does not want.
+ */
+.toy-press {
+  transition:
+    transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 180ms ease-out,
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.toy-press:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-lift);
+}
+
+.toy-press:active:not(:disabled) {
+  /* Short press-down response: it gives way under the finger. */
+  transform: translateY(1px) scale(0.985);
+  box-shadow: var(--shadow-soft);
+  transition-duration: 80ms;
+}
+
+/* A gentler version for large surfaces, where a 2px lift reads as a wobble. */
+.toy-press-soft:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
+
+.toy-press-soft:active:not(:disabled) {
+  transform: translateY(1px);
+  transition-duration: 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toy-press:hover,
+  .toy-press:active,
+  .toy-press-soft:hover,
+  .toy-press-soft:active {
+    transform: none;
+  }
+}
+
+html[data-reduced-motion='true'] .toy-press:hover,
+html[data-reduced-motion='true'] .toy-press:active,
+html[data-reduced-motion='true'] .toy-press-soft:hover,
+html[data-reduced-motion='true'] .toy-press-soft:active {
+  transform: none;
+}
+
+/* Soft focus ring in peach — visible, never a red warning colour. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-peach);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+/* Question text is read standing up, so it never gets a cramped scrollbar. */
+.question-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rarity-n) transparent;
+}

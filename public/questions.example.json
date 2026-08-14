@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "owner": "Example User",
+    "version": "1.0",
+    "generatedAt": "2026-08-14",
+    "note": "Entirely fictional sample bank so a fresh clone can run. Replace with your own public/questions.seed.json, which is gitignored. Nothing in here is real interview material.",
+    "schema": {
+      "likelihood": "high | medium | low — how likely in a real interview; drives draw weight",
+      "rarity": "N | R | SR | SSR — gacha tier; SSR doubles points",
+      "beats": "The structure to memorise. This is what you learn, not the script.",
+      "modelAnswer": "Reference answer, unlocked only after recording",
+      "coach": "The trap in this question, and what the interviewer is really testing",
+      "companySpecific": "true = must be rewritten for each target company"
+    }
+  },
+  "questions": [
+    {
+      "id": "E01",
+      "category": "behavioral",
+      "topic": "Opening & motivation",
+      "question": "Tell me about yourself.",
+      "likelihood": "high",
+      "rarity": "SSR",
+      "timeTargetSec": 75,
+      "beats": ["Where you started", "What you moved towards, and why", "What the combination gives you", "So why this role"],
+      "modelAnswer": "Sample answer. Three short paragraphs works well: where you came from, what you build now, and what the combination gives you that neither half would alone. Then one sentence connecting that to the role in front of you.\n\nFinish and stop talking. The most common failure here is not a weak story, it's a story that never ends.",
+      "coach": "Sixty to seventy-five seconds. This answer sets the tone for everything after it.",
+      "companySpecific": false,
+      "needsInput": false,
+      "tags": ["opening", "must-know"]
+    },
+    {
+      "id": "E02",
+      "category": "behavioral",
+      "topic": "Behavioural STAR",
+      "question": "Tell me about a time a project did not go to plan.",
+      "likelihood": "high",
+      "rarity": "SR",
+      "timeTargetSec": 90,
+      "beats": ["Name what went wrong without softening it", "The honest reason it happened", "What it cost", "What permanently changed, with evidence from later work"],
+      "modelAnswer": "Sample answer. One sentence of situation, then spend the time on what you specifically did.\n\nThe strongest version of this answer ends with evidence from a later project that the lesson actually stuck. A lesson with no proof behind it sounds rehearsed; a lesson with a follow-up example sounds true.",
+      "coach": "Interviewers are listening for self-correction, not for a project that went perfectly.",
+      "companySpecific": false,
+      "needsInput": false,
+      "tags": ["STAR", "failure"]
+    },
+    {
+      "id": "E03",
+      "category": "behavioral",
+      "topic": "Questions for them",
+      "question": "Do you have any questions for us?",
+      "likelihood": "high",
+      "rarity": "R",
+      "timeTargetSec": 60,
+      "beats": ["Prepare four, ask two or three", "One about the interviewer's own experience", "One about the real shape of the role", "One technical question you genuinely care about"],
+      "modelAnswer": "Sample answer. Write four questions per company and ask the two or three that still make sense by the end of the conversation.\n\nAvoid anything answered on the careers page, and avoid salary unless they raise it first. The best question is one you actually want the answer to — that comes across.",
+      "coach": "Practise responding substantively to their answer, rather than just saying 'great, thank you'.",
+      "companySpecific": true,
+      "needsInput": true,
+      "tags": ["closing"]
+    },
+    {
+      "id": "E04",
+      "category": "tech",
+      "topic": "Fundamentals",
+      "question": "Explain Big-O notation to a smart non-specialist.",
+      "likelihood": "high",
+      "rarity": "SR",
+      "timeTargetSec": 60,
+      "beats": ["It describes how work grows with input size, not absolute speed", "Constants get dropped because at scale they stop mattering", "An analogy the listener already owns", "Quadratic is the one to watch, and it is usually accidental"],
+      "modelAnswer": "Sample answer. It describes how the work grows as the input grows, rather than how fast something is today. Constants and lower-order terms get dropped because at large sizes they stop mattering.\n\nThe practical point is that Big-O tells you which code will still work when the data is ten times bigger, which is a different question from which code runs faster right now.",
+      "coach": "Answering with what question Big-O answers beats reciting the definition.",
+      "companySpecific": false,
+      "needsInput": false,
+      "tags": ["fundamentals", "must-know"]
+    },
+    {
+      "id": "E05",
+      "category": "tech",
+      "topic": "Fundamentals",
+      "question": "How would you decide whether a change made a system faster?",
+      "likelihood": "medium",
+      "rarity": "N",
+      "timeTargetSec": 70,
+      "beats": ["Measure before guessing", "Fix one thing at a time", "Compare against a baseline you recorded first", "Watch the worst case, not only the average"],
+      "modelAnswer": "Sample answer. Record a baseline before touching anything, then change one thing and measure again. Changing five things at once means you learn nothing about which one worked.\n\nAnd look at the tail, not just the mean. An average that improves while the worst case gets worse is usually a regression wearing a disguise.",
+      "coach": "'Measure before guessing' signals engineering discipline better than a list of optimisation tricks.",
+      "companySpecific": false,
+      "needsInput": false,
+      "tags": ["fundamentals", "debugging"]
+    }
+  ]
+}
