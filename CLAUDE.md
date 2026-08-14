@@ -82,6 +82,31 @@ recordings-export/
 
 ---
 
+## Deployment
+
+Live at **https://interview-gacha.vercel.app**, deployed on Vercel with Git integration:
+every push to `main` builds and goes to production automatically. No build config is
+needed — Vercel detects Vite, runs `npm run build`, and serves `dist`.
+
+**The deployed site is a showcase, not where I practise.** The real bank is gitignored, so
+Vercel only ever has `questions.example.json` and the site runs on the five fictional
+questions. My actual practice — my real bank, my recordings, my points — lives in
+localhost's IndexedDB and is per-origin, so it does not exist on the deployed site and
+never leaves this machine. Practise on `npm run dev`; send people the Vercel link.
+
+Two things to be careful about:
+
+1. **Prefer letting Git integration build.** `vercel` run by hand uploads the *local*
+   folder, where `public/questions.seed.json` does exist. `.vercelignore` guards against
+   that, but a deploy built from the repo cannot contain the file at all, which is a
+   stronger guarantee than a correctly-written ignore file. If a manual deploy is ever
+   genuinely needed, move the seed bank out of the folder first and verify afterwards that
+   `/questions.seed.json` returns 404 on the live site.
+2. **`.vercel/` and `.env.local` are local-only.** The CLI writes project ids and an OIDC
+   token there. Both are gitignored and must stay that way.
+
+---
+
 ## Code conventions
 
 - Write clear comments. I read and edit this code myself. Comments in English.
