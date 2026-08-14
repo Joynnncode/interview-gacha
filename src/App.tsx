@@ -44,6 +44,10 @@ export default function App() {
         await refreshPetMood();
         setBoot({ status: 'ready' });
       } catch (error) {
+        // Also logged, not just rendered: in the desktop build the main process
+        // forwards renderer errors to its own log, which is the only place a
+        // startup failure is visible without opening DevTools.
+        console.error('[interview-gacha] startup failed', error);
         setBoot({
           status: 'failed',
           message: error instanceof Error ? error.message : 'Something went wrong starting up.',

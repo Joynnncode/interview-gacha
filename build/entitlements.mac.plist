@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  DORMANT. Nothing references this file right now, and that is deliberate.
+
+  Entitlements only take effect when the app is code signed, and signing needs an
+  Apple Developer ID that this machine does not have. So the build runs with
+  `hardenedRuntime: false`, where macOS grants microphone access on the strength of
+  NSMicrophoneUsageDescription alone — which an unsigned local app can satisfy.
+
+  Do NOT wire this up with an ad-hoc `codesign --deep` signature. That was tried:
+  it re-signs the nested Electron Framework with a different identity from the
+  main executable, and the app then refuses to launch with
+  "different Team IDs".
+
+  If a real Developer ID ever exists, the correct move is to set
+  hardenedRuntime back to true and point mac.entitlements at this file — then
+  electron-builder signs inside-out properly and the audio-input entitlement
+  below becomes load-bearing again.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+  </dict>
+</plist>

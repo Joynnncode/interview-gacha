@@ -8,6 +8,7 @@
  */
 
 import { db, SINGLETON_ID } from './db';
+import { desktopBridge, isDesktop } from '../desktop';
 import type { Category, Question, QuestionBankFile, Settings } from '../types';
 
 const SEED_URL = '/questions.seed.json';
@@ -66,6 +67,40 @@ function withAppDefaults(question: Question): Question {
   };
 }
 
+interface ResolvedBank {
+  bank: QuestionBankFile;
+  source: 'seed' | 'example';
+  /** Filesystem path, on the desktop build only. */
+  path?: string;
+}
+
+/**
+ * Find the bank, whichever build we are running in.
+ *
+ * On the desktop the renderer loads over file://, so fetching an absolute path
+ * cannot work — the main process reads the file and hands it over the preload
+ * bridge instead. The seed-then-example precedence is identical either way.
+ */
+async function resolveBank(): Promise<ResolvedBank | null> {
+  const bridge = desktopBridge();
+
+  if (bridge) {
+    const payload = await bridge.readBank();
+    if (payload && isQuestionBankFile(payload.data)) {
+      return { bank: payload.data, source: payload.source, path: payload.path };
+    }
+    return null;
+  }
+
+  const seed = await tryLoadBankFile(SEED_URL);
+  if (seed) return { bank: seed, source: 'seed' };
+
+  const example = await tryLoadBankFile(EXAMPLE_URL);
+  if (example) return { bank: example, source: 'example' };
+
+  return null;
+}
+
 export interface BankImportResult {
   source: 'seed' | 'example';
   imported: number;
@@ -87,16 +122,17 @@ export async function ensureBankImported(): Promise<BankImportResult | null> {
 
   if (existing > 0) return null;
 
-  const seed = await tryLoadBankFile(SEED_URL);
-  const bank = seed ?? (await tryLoadBankFile(EXAMPLE_URL));
+  const resolved = await resolveBank();
 
-  if (!bank) {
+  if (!resolved) {
     throw new Error(
-      'No question bank found. Add public/questions.seed.json, or keep public/questions.example.json in place.',
+      isDesktop()
+        ? 'No question bank found. Put a questions.seed.json in the app data folder shown in Settings.'
+        : 'No question bank found. Add public/questions.seed.json, or keep public/questions.example.json in place.',
     );
   }
 
-  const source: 'seed' | 'example' = seed ? 'seed' : 'example';
+  const { bank, source } = resolved;
   const questions = bank.questions.map(withAppDefaults);
 
   await db.questions.bulkPut(questions);
@@ -115,11 +151,10 @@ export async function ensureBankImported(): Promise<BankImportResult | null> {
  * the seed file by hand.
  */
 export async function refreshBankFromFile(): Promise<BankImportResult> {
-  const seed = await tryLoadBankFile(SEED_URL);
-  const bank = seed ?? (await tryLoadBankFile(EXAMPLE_URL));
-  if (!bank) throw new Error('No question bank file available to refresh from.');
+  const resolved = await resolveBank();
+  if (!resolved) throw new Error('No question bank file available to refresh from.');
 
-  const source: 'seed' | 'example' = seed ? 'seed' : 'example';
+  const { bank, source } = resolved;
   const stored = await db.questions.toArray();
   const storedById = new Map(stored.map((q) => [q.id, q]));
   const incomingIds = new Set(bank.questions.map((q) => q.id));

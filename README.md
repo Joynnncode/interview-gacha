@@ -66,6 +66,29 @@ sample content.
 Your browser will ask for microphone permission the first time you record. If you decline, the app
 tells you how to re-enable it and the question stays where it is.
 
+### As a desktop app (macOS)
+
+There is also an Electron build, so it can live in the Dock instead of a browser tab:
+
+```bash
+npm run desktop      # run it in development
+npm run desktop:mac  # build a .dmg into release/
+```
+
+The packaged app reads your bank from
+`~/Library/Application Support/Interview Gacha/questions.seed.json`, so you can edit
+your questions and press **Reload from file** in Settings without rebuilding. Your real
+bank is deliberately never bundled into the app, so the `.dmg` is always safe to hand
+to someone.
+
+The app is unsigned — it is a personal tool, not something distributed — so macOS may
+ask you to confirm the first launch.
+
+> **One thing to know:** browser storage is per-origin, and the browser version, the
+> desktop dev build and the packaged app are three different origins. Pick one place to
+> practise (the packaged app is the intended one) and use **Settings → Export/Import**
+> to move data between them.
+
 ### Adding your own questions
 
 Create `public/questions.seed.json` following the shape of `public/questions.example.json`, then

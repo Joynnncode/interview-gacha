@@ -11,3 +11,6 @@ recordings-export/
 *.tsbuildinfo
 .vercel
 .env*
+out/
+release/
+*.dmg

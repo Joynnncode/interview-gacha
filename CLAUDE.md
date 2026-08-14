@@ -107,6 +107,68 @@ Two things to be careful about:
 
 ---
 
+## Desktop app (Electron)
+
+Same stack as Tomato Alarm: Electron + electron-vite + electron-builder.
+
+```bash
+npm run desktop        # dev, with HMR (renderer served over http://localhost)
+npm run desktop:build  # build main + preload + renderer into out/
+npm run desktop:mac    # package into release/ as .dmg and .zip
+```
+
+The web app is untouched by all of this. `npm run dev` and `npm run build` still
+work, `dist/` is still the web output, and Vercel still deploys from the same source.
+Desktop artefacts go to `release/` — they used to collide in `dist/`.
+
+**The origin decides where your data lives, and it must not change.** IndexedDB is
+per-origin, and each way of running the app is a different origin:
+
+| How it runs | Origin | Data |
+| --- | --- | --- |
+| `npm run dev` | `http://localhost:5173` | the browser copy |
+| `npm run desktop` | `http://localhost:<port>` | a separate dev copy |
+| the packaged `.app` | `app://-` | **the real one** |
+
+So practise in the **packaged app**, and treat `npm run desktop` as development only.
+Changing the `APP_SCHEME` in `electron/main/index.ts` would orphan every recording,
+so treat `app://` as frozen.
+
+### Things that were fiddly, so they do not get re-broken
+
+- **Main and preload are emitted as `.cjs`.** `electron` is a CommonJS module, so
+  `import { BrowserWindow } from 'electron'` throws "does not provide an export named"
+  under ESM — and this package is `"type": "module"` for the web build. Tomato Alarm
+  sidesteps it by having no `type` field at all.
+- **`app.setName('Interview Gacha')` runs before anything reads a path.** userData is
+  derived from the app name, which is package.json `name` when unpackaged but
+  `productName` once packaged. Without pinning it, dev and the built app use two
+  different folders and each sees a different bank.
+- **The real bank is never bundled.** `publicDir` is off for the Electron renderer,
+  because Vite would otherwise copy `public/questions.seed.json` into the app and
+  therefore into any dmg. The fictional bank ships explicitly via `extraResources`,
+  and `files` additionally excludes `**/questions.seed.json`.
+- **Microphone:** `NSMicrophoneUsageDescription` (via `mac.extendInfo`) plus Electron's
+  own `setPermissionRequestHandler`, which denies by default. `hardenedRuntime` is
+  **off** and `identity` is `null`, because entitlements only apply to a signed app and
+  there is no Developer ID here. `build/entitlements.mac.plist` is dormant — see the
+  comment inside it, and do not try to ad-hoc sign with `codesign --deep`, which
+  re-signs the nested Electron Framework and stops the app launching entirely.
+
+### Putting your own bank in
+
+The app reads `<userData>/questions.seed.json`, i.e.:
+
+```
+~/Library/Application Support/Interview Gacha/questions.seed.json
+```
+
+Copy it there once. Editing that file and pressing **Reload from file** in Settings
+picks up changes with no rebuild. If it is absent the app falls back to the bundled
+fictional bank, exactly as the web version does.
+
+---
+
 ## Code conventions
 
 - Write clear comments. I read and edit this code myself. Comments in English.
