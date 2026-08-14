@@ -1,0 +1,13 @@
+# Files never to upload to a deployment.
+#
+# The important line is the question bank. It is gitignored, so a deployment
+# built from the GitHub repo can never contain it — but the Vercel CLI uploads
+# from the LOCAL folder, where the file does exist. This is the second lock on
+# that door, so `vercel` run by hand cannot publish real interview material.
+public/questions.seed.json
+
+node_modules/
+dist/
+recordings-export/
+*.local
+.DS_Store
