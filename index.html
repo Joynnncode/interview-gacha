@@ -4,8 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A gacha machine for my own interview questions. Draw one, answer it out loud, then unlock the reference answer." />
-    <!-- Single-user local app: nothing here should ever be indexed or shared. -->
-    <meta name="robots" content="noindex, nofollow" />
+    <!--
+      The page is public and indexable: the deployed site is a showcase, and it
+      runs on the fictional sample bank.
+
+      Indexable refers to this page only. It says nothing about the data — every
+      recording, note and point stays in the visitor's own IndexedDB, and the app
+      makes no network request to anywhere.
+    -->
     <title>Interview Gacha</title>
   </head>
   <body>
