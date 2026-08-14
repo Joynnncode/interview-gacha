@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "desktop": "electron-vite dev",
     "desktop:build": "tsc -b && electron-vite build",
-    "desktop:mac": "npm run desktop:build && electron-builder --mac"
+    "desktop:mac": "npm run icon && npm run desktop:build && electron-builder --mac",
+    "desktop:install": "npm run desktop:mac && rm -rf '/Applications/Interview Gacha.app' && cp -R release/mac*/'Interview Gacha.app' /Applications/",
+    "icon": "node scripts/make-icon.mjs"
   },
   "build": {
     "appId": "com.joynnncode.interviewgacha",
@@ -29,6 +31,7 @@
     ],
     "mac": {
       "category": "public.app-category.education",
+      "icon": "build/icon.icns",
       "target": [
         "dmg",
         "zip"

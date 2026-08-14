@@ -112,10 +112,16 @@ Two things to be careful about:
 Same stack as Tomato Alarm: Electron + electron-vite + electron-builder.
 
 ```bash
-npm run desktop        # dev, with HMR (renderer served over http://localhost)
-npm run desktop:build  # build main + preload + renderer into out/
-npm run desktop:mac    # package into release/ as .dmg and .zip
+npm run desktop          # dev, with HMR (renderer served over http://localhost)
+npm run desktop:build    # build main + preload + renderer into out/
+npm run desktop:mac      # package into release/ as .dmg and .zip
+npm run desktop:install  # the above, then copy the .app into /Applications
+npm run icon             # redraw build/icon.png and build/icon.icns
 ```
+
+Day to day this is a normal Mac app: `npm run desktop:install` once, then open it from
+Launchpad, Spotlight or the Dock. Rebuilding just replaces `/Applications/Interview
+Gacha.app`; the data lives in userData, not in the bundle, so nothing is lost.
 
 The web app is untouched by all of this. `npm run dev` and `npm run build` still
 work, `dist/` is still the web output, and Vercel still deploys from the same source.
@@ -148,6 +154,20 @@ so treat `app://` as frozen.
   because Vite would otherwise copy `public/questions.seed.json` into the app and
   therefore into any dmg. The fictional bank ships explicitly via `extraResources`,
   and `files` additionally excludes `**/questions.seed.json`.
+- **The icon is drawn by a script, not stored as art.** `scripts/make-icon.mjs` renders
+  `build/icon.png` (1024px) and `build/icon.icns` with no dependencies — it samples the
+  shapes and encodes the PNG itself, because this machine has no SVG rasteriser and one
+  is not worth installing for a single icon. electron-builder picks up
+  `build/icon.icns` from `buildResources`, and `setDevDockIcon()` in the main process
+  loads the png in dev, since `npm run desktop` otherwise shows Electron's own atom.
+  The menu bar still says "Electron" in dev — that comes from node_modules' Electron
+  bundle and cannot be changed at runtime; the packaged app says Interview Gacha.
+- **Never launch the packaged app from an Electron-hosted terminal.** VS Code's terminal
+  and Claude Code's shell set `ELECTRON_RUN_AS_NODE=1`, which any Electron binary
+  inherits: the app then runs as plain Node, prints nothing and exits 0 straight away,
+  which looks exactly like a crash. `env -i HOME=$HOME PATH=/usr/bin:/bin
+  "/Applications/Interview Gacha.app/Contents/MacOS/Interview Gacha"` runs it properly,
+  and double-clicking in Finder was never affected.
 - **Microphone:** `NSMicrophoneUsageDescription` (via `mac.extendInfo`) plus Electron's
   own `setPermissionRequestHandler`, which denies by default. `hardenedRuntime` is
   **off** and `identity` is `null`, because entitlements only apply to a signed app and

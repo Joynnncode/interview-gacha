@@ -16,8 +16,9 @@
  * Plus Electron's own in-process permission handler, which defaults to denying.
  */
 
-import { BrowserWindow, app, net, protocol, session, shell, systemPreferences } from 'electron';
+import { BrowserWindow, app, nativeImage, net, protocol, session, shell, systemPreferences } from 'electron';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { bankDir, registerBankHandlers } from './bank';
@@ -59,6 +60,29 @@ const APP_ID = 'com.joynnncode.interviewgacha';
  * One name, one folder, both builds.
  */
 app.setName('Interview Gacha');
+
+/**
+ * Give the Dock the app's own icon while developing.
+ *
+ * A packaged app gets its icon from the bundle (electron-builder picks up
+ * build/icon.icns), but `npm run desktop` runs inside node_modules' generic
+ * Electron bundle, so without this the Dock shows the Electron atom and dev
+ * looks like a different app from the built one. Regenerate the icon with
+ * `npm run icon`.
+ *
+ * The menu bar still says "Electron" in dev — that name comes from the Electron
+ * bundle's own Info.plist and cannot be changed at runtime. It is correct in the
+ * packaged app, which is the one to practise in anyway.
+ */
+function setDevDockIcon(): void {
+  if (!is.dev || process.platform !== 'darwin') return;
+
+  // out/main/index.cjs -> project root/build
+  const iconPath = join(__dirname, '../../build/icon.png');
+  if (!existsSync(iconPath)) return;
+
+  app.dock?.setIcon(nativeImage.createFromPath(iconPath));
+}
 
 /** Window size: the question text is large by design, so give it room. */
 const WINDOW = {
@@ -181,6 +205,7 @@ async function requestMicrophoneAccess(): Promise<void> {
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId(APP_ID);
+  setDevDockIcon();
 
   app.on('browser-window-created', (_event, window) => {
     optimizer.watchWindowShortcuts(window);
