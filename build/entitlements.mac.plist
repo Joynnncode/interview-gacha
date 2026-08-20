@@ -22,6 +22,9 @@
   <dict>
     <key>com.apple.security.device.audio-input</key>
     <true/>
+    <!-- Eye-contact training reads camera frames. Nothing is recorded from them. -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>

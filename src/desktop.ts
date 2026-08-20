@@ -16,6 +16,11 @@ export interface DesktopBankPayload {
 export interface DesktopBridge {
   readBank(): Promise<DesktopBankPayload | null>;
   bankDir(): Promise<string>;
+  /**
+   * Ask macOS for camera access, resolving true if it was granted. Only the
+   * packaged app needs this; in a browser the getUserMedia prompt is enough.
+   */
+  requestCameraAccess(): Promise<boolean>;
 }
 
 declare global {

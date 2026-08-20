@@ -40,6 +40,27 @@ Two design decisions follow from this and are worth stating plainly:
 - **The pet droops when you are away, and that is all it ever does.** It does not die, does not
   disappear, and never guilts you.
 
+## Eye contact (optional)
+
+Off by default; switch it on in **Settings → Eye contact**. While you record, a small dot sits at
+the top of the screen next to the webcam. It glows while you are looking at the lens and goes quiet
+when your eyes wander, so the thing you are meant to look at is put where you are meant to look —
+following it *is* the exercise. There is no counter on screen during the answer, deliberately: a
+number ticking over would just give you something new to stare at.
+
+Afterwards, under the reveal, you get the numbers — what percentage of the answer was on the lens,
+how many times your eyes drifted away, your longest unbroken hold, and which direction the drifts
+tended to go (downwards usually means notes).
+
+**No video is recorded.** Each frame goes to the face model, comes back as four numbers, and is
+dropped in the same instant. What ends up in the database is about a hundred bytes per answer. The
+model file is served from this app's own origin, so this stays true to the rest of the project:
+zero third-party requests, zero uploads. And like everything else here, eye contact never affects
+points — it is information, not a grade.
+
+A two-second calibration in Settings makes it noticeably more accurate, since everything is measured
+as a deviation from *you*, at *your* desk, looking at *your* lens.
+
 ## Screenshots
 
 <!-- Add screenshots here: the machine on the draw screen, a question mid-recording,
@@ -176,6 +197,9 @@ Every one of those numbers lives in `src/game/config.ts`. Change them there.
 - [Framer Motion](https://motion.dev) — the capsule drop and crack-open
 - [Dexie.js](https://dexie.org) + `dexie-react-hooks` for IndexedDB and reactive reads
 - The native `MediaRecorder` API for audio. No recording library
+- [MediaPipe Face Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker)
+  for the optional eye-contact tracking. The wasm runtime and the model are bundled and served from
+  this origin rather than from Google's CDN, so the no-third-party-requests rule still holds
 
 Accessibility and motion: the app honours `prefers-reduced-motion`, and Settings can override it in
 either direction for machines where no system preference is set.
@@ -198,7 +222,11 @@ src/
     bank.ts                first-run import, seed → example fallback
     actions.ts             every write that advances the game
     transfer.ts            JSON export / import
-  hooks/                   useRecorder, useLiveQuery reads, motion preference
+  vision/
+    landmarks.ts           face mesh → four numbers (no MediaPipe import, so it is testable)
+    gazeTracker.ts         the eye-contact state machine and calibration (pure)
+    faceLandmarker.ts      the only file that loads MediaPipe
+  hooks/                   useRecorder, useGazeTracker, useLiveQuery reads, motion preference
   components/              gacha machine, question card, the four stage panels, pet
   pages/                   Draw · Collection · History · Settings
 ```

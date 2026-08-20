@@ -21,7 +21,7 @@ import {
   toLocalDateKey,
 } from '../game/rewards';
 import type { PointsBreakdown } from '../game/rewards';
-import type { Badge, PetState, SelfRating, Session, Settings } from '../types';
+import type { Badge, GazeSummary, PetState, SelfRating, Session, Settings } from '../types';
 
 /** Ensure the singleton rows exist. Safe to call on every boot. */
 export async function ensureBaseRecords(): Promise<void> {
@@ -63,7 +63,11 @@ export async function discardRecording(sessionId: number): Promise<void> {
   assertTransition(session.stage, 'drawn');
   await db.transaction('rw', db.sessions, db.recordings, async () => {
     await db.recordings.where('sessionId').equals(sessionId).delete();
-    await db.sessions.update(sessionId, { stage: 'drawn', durationSec: undefined });
+    await db.sessions.update(sessionId, {
+      stage: 'drawn',
+      durationSec: undefined,
+      gaze: undefined,
+    });
   });
 }
 
@@ -73,6 +77,12 @@ export interface SaveRecordingInput {
   blob: Blob;
   mimeType: string;
   durationSec: number;
+  /**
+   * Eye-contact numbers, when the camera was on. Absent is the normal case and
+   * changes nothing: it is stored beside the session and read by nothing that
+   * awards anything.
+   */
+  gaze?: GazeSummary;
 }
 
 /**
@@ -105,6 +115,7 @@ export async function saveRecording(input: SaveRecordingInput): Promise<boolean>
     await db.sessions.update(input.sessionId, {
       stage: 'rating',
       durationSec: input.durationSec,
+      gaze: input.gaze,
     });
   });
 

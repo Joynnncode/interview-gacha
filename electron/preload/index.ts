@@ -8,7 +8,9 @@
  *
  * Note what is NOT here: no filesystem write, no shell, no arbitrary IPC. The
  * recordings stay in IndexedDB exactly as they do on the web — the desktop build
- * changes where the bank comes from, and nothing else.
+ * changes where the bank comes from, and nothing else. The camera call below
+ * asks macOS for permission; it cannot read a frame, and no frame ever crosses
+ * this bridge in either direction.
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
@@ -20,6 +22,12 @@ const bridge = {
 
   /** Where to drop my own questions.seed.json. Shown in Settings. */
   bankDir: (): Promise<string> => ipcRenderer.invoke('bank:dir'),
+
+  /**
+   * Ask macOS for camera access. Called only when eye-contact tracking is
+   * actually switched on, so someone who never uses it is never prompted.
+   */
+  requestCameraAccess: (): Promise<boolean> => ipcRenderer.invoke('camera:request'),
 };
 
 contextBridge.exposeInMainWorld('gacha', bridge);

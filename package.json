@@ -38,7 +38,8 @@
       ],
       "hardenedRuntime": false,
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Interview Gacha records your spoken answers so you can play them back. Recordings stay on this Mac and are never uploaded."
+        "NSMicrophoneUsageDescription": "Interview Gacha records your spoken answers so you can play them back. Recordings stay on this Mac and are never uploaded.",
+        "NSCameraUsageDescription": "Interview Gacha can measure how often your eyes leave the lens while you answer, to help you practise eye contact. No video is recorded, stored or uploaded — only a count."
       },
       "identity": null
     },
@@ -50,6 +51,7 @@
     ]
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "framer-motion": "^11.18.2",

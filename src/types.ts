@@ -9,6 +9,8 @@
  *    that function is the single gate.
  * 2. Recordings are stored as Blobs, never base64. Export converts on the way
  *    out only if the user asks for audio to be included.
+ * 3. Eye-contact tracking stores numbers, never pixels. There is no video Blob
+ *    anywhere in this file on purpose — see GazeSummary.
  */
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,11 @@ export interface Session {
   pointsAwarded?: number;
   /** Free-text note the user can add after the reveal. */
   note?: string;
+  /**
+   * Eye-contact numbers for this attempt. Absent when the camera was off,
+   * unavailable or declined — which must never block anything else.
+   */
+  gaze?: GazeSummary;
 }
 
 /** An audio recording, stored as a Blob. Kept in its own table so sessions stay light. */
@@ -127,6 +134,73 @@ export interface Recording {
   durationSec: number;
   createdAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Eye-contact training
+// ---------------------------------------------------------------------------
+
+/**
+ * Which way the eyes went. Reported from the speaker's point of view, i.e.
+ * "left" means the left of your own screen.
+ */
+export type GazeDirection = 'left' | 'right' | 'up' | 'down';
+
+/** One look-away that lasted long enough to count. */
+export interface GazeGlance {
+  /** Seconds into the recording at which the drift started. */
+  atSec: number;
+  durationSec: number;
+  direction: GazeDirection;
+}
+
+/**
+ * What one attempt's eye contact looked like, as numbers.
+ *
+ * This is the ONLY thing eye tracking ever writes down. Frames are analysed in
+ * memory and dropped immediately: no video Blob is stored, exported or sent
+ * anywhere, which is both the privacy position and the reason this is cheap.
+ *
+ * Nothing here feeds points, the pet or badges. Rule 7 stands — the reward is
+ * for finishing a recording, and looking away is information, not a penalty.
+ */
+export interface GazeSummary {
+  /** Seconds in which a face was actually found. The denominator for the rest. */
+  trackedSec: number;
+  /** Seconds within trackedSec where the gaze was on the lens. */
+  onCameraSec: number;
+  /** Seconds where no face could be found at all, e.g. out of frame. */
+  untrackedSec: number;
+  /** How many look-aways lasted past the debounce threshold. */
+  glanceCount: number;
+  /** The longest unbroken stretch of eye contact. The number worth growing. */
+  longestHoldSec: number;
+  /** The first few glances, for a timeline. Capped — glanceCount is the true total. */
+  glances: GazeGlance[];
+}
+
+/**
+ * Where "looking at the lens" sits for this person, this camera, this desk.
+ *
+ * Everything the tracker measures is a deviation from these four baselines, so
+ * absolute head angles never have to be trusted. Captured once in Settings and
+ * reused; re-capture after moving the camera.
+ */
+export interface GazeCalibration {
+  /** Horizontal iris position within the eye opening, 0–1, ~0.5 when centred. */
+  irisX: number;
+  /** Vertical iris position within the eye opening, 0–1, ~0.5 when centred. */
+  irisY: number;
+  /** Nose offset from the face's horizontal midline, in face widths. */
+  headX: number;
+  /** Nose offset from the face's vertical midline, in face heights. */
+  headY: number;
+  /** How many usable samples the average is built from. */
+  samples: number;
+  capturedAt: string;
+}
+
+/** How fussy the tracker is. Maps to a tolerance multiplier in GAZE_CONFIG. */
+export type GazeSensitivity = 'relaxed' | 'normal' | 'strict';
 
 // ---------------------------------------------------------------------------
 // Rewards
@@ -181,6 +255,12 @@ export interface Settings {
   drawCategories: Category[];
   /** true = questions with needsInput are excluded from the draw. */
   skipNeedsInput: boolean;
+  /** Opt-in. Off by default: the app must work perfectly with no camera. */
+  gazeTrackingEnabled: boolean;
+  /** How far the eyes may drift before it counts. */
+  gazeSensitivity: GazeSensitivity;
+  /** Null until calibrated; the tracker falls back to a neutral baseline. */
+  gazeCalibration: GazeCalibration | null;
   /** Whether the seed bank has been imported yet. */
   bankImportedAt?: string;
   /** Which file the bank came from, so the UI can say so honestly. */

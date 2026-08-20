@@ -14,9 +14,23 @@
  *   3. an OS-level permission prompt                (askForMediaAccess, below)
  *
  * Plus Electron's own in-process permission handler, which defaults to denying.
+ *
+ * The camera goes through the same three steps, with one difference: it is only
+ * ever asked for when eye-contact training is switched on, so someone who never
+ * turns it on is never prompted for a camera. See `camera:request` below.
  */
 
-import { BrowserWindow, app, nativeImage, net, protocol, session, shell, systemPreferences } from 'electron';
+import {
+  BrowserWindow,
+  app,
+  ipcMain,
+  nativeImage,
+  net,
+  protocol,
+  session,
+  shell,
+  systemPreferences,
+} from 'electron';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -203,6 +217,22 @@ async function requestMicrophoneAccess(): Promise<void> {
   }
 }
 
+/**
+ * Ask macOS for camera access, on demand.
+ *
+ * Deliberately not called at startup. Recording is the point of the app so the
+ * microphone prompt at launch is expected; a camera prompt would not be, and
+ * eye-contact training is opt-in. The renderer calls this the first time it
+ * actually wants the camera.
+ */
+function registerCameraHandler(): void {
+  ipcMain.handle('camera:request', async () => {
+    if (process.platform !== 'darwin') return true;
+    if (systemPreferences.getMediaAccessStatus('camera') === 'granted') return true;
+    return systemPreferences.askForMediaAccess('camera');
+  });
+}
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId(APP_ID);
   setDevDockIcon();
@@ -214,6 +244,7 @@ app.whenReady().then(async () => {
   registerAppProtocol();
   configureMediaPermissions();
   registerBankHandlers();
+  registerCameraHandler();
 
   // Printed once at startup so it is obvious where to drop my own bank.
   console.log(`[interview-gacha] Put your questions.seed.json in: ${bankDir()}`);

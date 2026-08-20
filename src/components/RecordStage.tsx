@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { POINTS_CONFIG } from '../game/config';
 import { STAGE_COPY } from '../game/flow';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import type { GazeTrackerState } from '../hooks/useGazeTracker';
 import type { UseRecorder } from '../hooks/useRecorder';
 import { Button, formatDuration } from './ui';
 
@@ -23,6 +24,11 @@ export interface RecordStageProps {
   saving: boolean;
   /** Set when the last attempt was too short to count. */
   tooShort: boolean;
+  /** Off unless eye-contact training is switched on in Settings. */
+  gazeEnabled: boolean;
+  gazeState: GazeTrackerState;
+  /** Why the camera is unavailable, when it is. Never blocks recording. */
+  gazeMessage: string | null;
 }
 
 export function RecordStage({
@@ -33,6 +39,9 @@ export function RecordStage({
   onCancel,
   saving,
   tooShort,
+  gazeEnabled,
+  gazeState,
+  gazeMessage,
 }: RecordStageProps) {
   const reducedMotion = useReducedMotion();
   const isRecording = recorder.state === 'recording';
@@ -105,8 +114,54 @@ export function RecordStage({
               <p className="mt-1">{recorder.message}</p>
             </div>
           ) : null}
+
+          <GazeStatus enabled={gazeEnabled} state={gazeState} message={gazeMessage} />
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A one-line note about the camera, shown before recording starts.
+ *
+ * Its job is to make the camera's state legible before you commit to speaking —
+ * finding out afterwards that nothing was tracked is annoying. Every failure
+ * state says the same thing in different words: recording is unaffected.
+ */
+function GazeStatus({
+  enabled,
+  state,
+  message,
+}: {
+  enabled: boolean;
+  state: GazeTrackerState;
+  message: string | null;
+}) {
+  if (!enabled) return null;
+
+  if (message) {
+    return (
+      <div className="mt-4 rounded-toy bg-cream-deep p-4 text-sm text-ink-soft">
+        <p className="font-semibold text-ink">Eye contact will not be tracked</p>
+        <p className="mt-1">{message}</p>
+      </div>
+    );
+  }
+
+  const label =
+    state === 'loading'
+      ? 'Getting the face model ready…'
+      : state === 'requesting'
+        ? 'Waiting for the camera…'
+        : state === 'ready' || state === 'tracking'
+          ? 'Eye contact tracking is on. Look at the dot at the top of the screen.'
+          : 'Eye contact tracking is starting up.';
+
+  return (
+    <p className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
+      <span aria-hidden="true">👁</span>
+      {label}
+    </p>
   );
 }

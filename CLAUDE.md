@@ -13,6 +13,9 @@ Core loop: draw a question → answer it out loud and record it → recording un
 - Framer Motion (animation)
 - Dexie.js (IndexedDB wrapper)
 - Native browser MediaRecorder API (audio recording)
+- `@mediapipe/tasks-vision` Face Landmarker, for the optional eye-contact tracking. Its wasm
+  runtime and its model file are imported with Vite's `?url` and served from this origin —
+  never from Google's CDN, which would break rule 3.
 - Frontend only. No backend, no accounts, no network calls.
 
 If you think a stack choice should change, ask me first. Do not swap it silently.
@@ -29,6 +32,12 @@ If you think a stack choice should change, ask me first. Do not swap it silently
 6. There must always be a one-click export/import of all data as JSON.
 7. Rewards are tied to **completing a recording**, never to answering well. A low self-rating must never subtract points, never make the pet droop, and never trigger negative copy.
 8. The pet droops but never dies and never disappears. No guilt-inducing copy of any kind ("it misses you", "it's hungry", crying emoji, etc.).
+9. **Eye-contact tracking never stores a video frame.** Frames are measured and dropped in the
+   same instant. No canvas capture, no video Blob, no `MediaRecorder` on the camera stream, and
+   nothing about the camera in the export bundle beyond the numbers on the session. If a change
+   would put a frame anywhere it could persist, stop and ask me.
+10. Eye contact is subject to rule 7 like everything else: it never adds points, never subtracts
+    them, never touches the pet or a badge, and never gets scolding copy. It is information.
 
 ### How rules 1 and 2 are enforced in code
 
@@ -37,6 +46,15 @@ If you think a stack choice should change, ask me first. Do not swap it silently
 - The flow's legal transitions live in `ALLOWED_TRANSITIONS`; every database write that changes stage calls `assertTransition` first, so `drawn → revealed` throws instead of silently succeeding.
 
 ---
+
+### How rule 9 is enforced in code
+
+- `src/vision/landmarks.ts` turns a frame's landmarks into exactly four numbers plus an eye-openness
+  value. It has no MediaPipe import at all, which is also why it is testable without a browser.
+- `useGazeTracker` never creates a canvas and never attaches a recorder to the camera stream. The
+  only consumer of the `<video>` element is `readFrame`, which reads and returns numbers.
+- `src/db/gaze.test.ts` asserts that a terrible eye-contact summary earns exactly the same points as
+  a perfect one, and that the only Blob in the database is audio. That test is the guard rail.
 
 ## Language rule (important)
 
@@ -189,6 +207,68 @@ fictional bank, exactly as the web version does.
 
 ---
 
+## Eye-contact training (optional, off by default)
+
+Practising not letting my eyes wander off the lens. Switched on in **Settings → Eye contact**;
+everything about it is opt-in and the app is complete without it.
+
+While recording, a soft dot sits at the top centre of the window, next to the laptop's lens. It
+glows while I am holding the lens and goes pale when I drift. **There is no counter on screen
+during the answer on purpose** — a number ticking over just becomes the new thing to stare at. The
+numbers appear after the rating, in `GazeReport`.
+
+### The pipeline
+
+```
+camera frame → MediaPipe face mesh → four numbers → deviation from calibration → debounce → summary
+   (dropped)      (478 landmarks)     landmarks.ts        gazeTracker.ts                     Session.gaze
+```
+
+The four numbers are iris position within each eye opening (x and y) and nose offset from the face
+midlines (x and y). All four are divided through by eye or face size, so leaning towards the screen
+does not read as a glance.
+
+### Things that were fiddly, so they do not get re-broken
+
+- **The camera is not mirrored, so image-right is my left.** Looking at the left of my screen makes
+  `irisX` go *up*. `directionFor()` in `gazeTracker.ts` is the single place that flip is applied,
+  and there is a test asserting it, because getting it backwards would send me looking for a
+  distraction on the wrong side of the desk.
+- **Blinks are not glances.** A closing eyelid drags the iris centre downwards and reads as a large
+  look-down several times a minute. Frames below `GAZE_CONFIG.blinkEyeAspect` hold the previous
+  reading instead of being believed.
+- **Saccades are not glances.** Eyes flick constantly during speech. A drift only counts after
+  `driftToCountMs`, and contact has to be re-established for `returnToResetMs` before another one
+  can be counted. Loosening these makes the count meaningless, not more sensitive.
+- **A missing face is untracked time, not a look-away.** A detection failure and looking away are
+  not the same thing, and only one of them is my fault. The current hold survives a short gap.
+- **`summary()` does not mutate.** It used to close the open glance by writing to its own state, so
+  calling it twice appended a second, zero-length glance. Tests catch this now.
+- **The model and wasm are imported with `?url`, not put in `public/`.** The Electron renderer
+  builds with `publicDir: false` (so my real bank cannot end up in a dmg), and `?url` assets are
+  emitted by Vite for the web build and the Electron build alike, with no extra packaging step.
+  `src/vision/face_landmarker.task` is 3.6MB and committed, so the build works offline.
+- **The wasm is the SIMD build only.** `FilesetResolver.forVisionTasks` would pick a nosimd
+  fallback, but shipping a second 10MB binary for a case that cannot happen on this machine is not
+  worth it. An old browser lands in the tracker's `unsupported` state, which says so and leaves
+  recording working.
+- **macOS asks for the camera lazily.** `camera:request` over IPC, called the first time the camera
+  is actually wanted, rather than at launch beside the microphone prompt. Somebody who never turns
+  this on is never prompted. `NSCameraUsageDescription` is in `mac.extendInfo`.
+- **The dot is positioned relative to the window, not the screen.** If the window is not near the
+  top of the display it will not line up with the lens. Calibration is what keeps the *measurement*
+  correct regardless; the dot's position only affects how good a visual cue it is.
+
+### Calibration
+
+Everything is measured as a deviation from a baseline captured in Settings: me, at this desk,
+looking at this lens. It works uncalibrated — `NEUTRAL_GAZE_BASELINE` assumes a centred face and
+centred eyes — but two seconds of calibration is noticeably better.
+
+The calibrator takes the **median**, not the mean, and refuses a sample set that wobbles more than
+`calibrationMaxWobble`. A baseline taken mid-movement is worse than no baseline at all, because
+every session afterwards is measured from it.
+
 ## Code conventions
 
 - Write clear comments. I read and edit this code myself. Comments in English.
@@ -240,6 +320,7 @@ One palette judgement to revisit if it bothers you: rarity R uses a pale powder 
 - [x] Phase 5 — Reward system (pet / collection / badges)
 - [~] Phase 6 — History, stats, question management, settings
 - [x] Phase 7 — Visual polish
+- [x] Phase 8 — Eye-contact training (optional camera, counts glances, stores no video)
 
 Phase 6 is partly done: history, summary stats, settings, export/import and "reload bank from file" all exist. What is **not** built yet is in-app question editing — right now the bank is edited by hand in `public/questions.seed.json` and picked up with the "Reload from file" button in Settings.
 
@@ -266,6 +347,15 @@ Phase 4 covers the capsule drop / wobble / crack-open sequence. There is no spin
 - `src/test/helpers.ts` — shared test helpers, including the `reloadPage` simulation
 - `src/db/transfer.ts` — JSON export and import
 - `src/hooks/useRecorder.ts` — MediaRecorder wrapper, including the permission-denied path
+- `src/vision/landmarks.ts` — face mesh → four numbers; no MediaPipe import, so it is testable
+- `src/vision/gazeTracker.ts` — the eye-contact state machine and debounce (pure)
+- `src/vision/calibration.ts` — capturing the baseline, and refusing a bad one (pure)
+- `src/vision/faceLandmarker.ts` — the only file that loads MediaPipe and the model
+- `src/hooks/useGazeTracker.ts` — camera lifecycle and the 10Hz sampling loop
+- `src/components/GazeDot.tsx` — the "look here" dot beside the lens
+- `src/components/GazeOverlay.tsx` — the hidden video element plus the dot, mounted by DrawPage
+- `src/components/GazeReport.tsx` — the numbers after the reveal, plus the one-line history version
+- `src/components/GazeSettings.tsx` — the Settings panel, including calibration
 - `src/hooks/useAppData.ts` — all `useLiveQuery` reads
 - `src/pages/DrawPage.tsx` — orchestrates the four stages
 - `src/index.css` — colour tokens, fonts, radii, shadows, `.toy-press`, reduced-motion rules

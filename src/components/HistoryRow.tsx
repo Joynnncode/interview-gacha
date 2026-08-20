@@ -13,6 +13,7 @@ import type { HistoryEntry } from '../db/history';
 import { RATING_COPY } from '../game/flow';
 import { useRecordingUrl } from '../hooks/useAppData';
 import { PetSpinner } from './PetSpinner';
+import { GazeLine } from './GazeReport';
 import { Button, RarityChip, formatDate, formatDuration } from './ui';
 
 export function HistoryRow({ entry }: { entry: HistoryEntry }) {
@@ -30,6 +31,12 @@ export function HistoryRow({ entry }: { entry: HistoryEntry }) {
             · called it {RATING_COPY[session.selfRating].label.toLowerCase()}
           </span>
         ) : null}
+        {/*
+          Eye contact survives deleting the audio, the same way the rating and
+          the note do: the practice happened whether or not the file is still
+          on disk.
+        */}
+        <GazeLine summary={session.gaze} />
         {typeof session.pointsAwarded === 'number' ? (
           <span className="ml-auto rounded-full bg-gold/40 px-3 py-0.5 text-xs font-bold text-ink">
             +{session.pointsAwarded}

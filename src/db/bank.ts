@@ -19,6 +19,11 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: null,
   drawCategories: ['behavioral', 'tech'],
   skipNeedsInput: false,
+  // Off by default and staying that way: the app has to be complete without a
+  // camera, and asking for one unprompted on first run would be a rude surprise.
+  gazeTrackingEnabled: false,
+  gazeSensitivity: 'normal',
+  gazeCalibration: null,
 };
 
 /**

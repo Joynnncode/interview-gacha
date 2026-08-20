@@ -5,7 +5,7 @@
  * below this file should contain a bare number that affects balance.
  */
 
-import type { Likelihood, PetStage, Rarity, SelfRating } from '../types';
+import type { GazeSensitivity, Likelihood, PetStage, Rarity, SelfRating } from '../types';
 
 // ---------------------------------------------------------------------------
 // Draw weights
@@ -211,3 +211,91 @@ export const BADGE_DEFINITIONS = [
 ] as const;
 
 export type BadgeId = (typeof BADGE_DEFINITIONS)[number]['id'];
+
+// ---------------------------------------------------------------------------
+// Eye-contact training
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything the gaze tracker is allowed to be opinionated about.
+ *
+ * Read this before touching the tracker: none of these numbers affect points,
+ * the pet or badges, and they must never be made to. Rule 7 says the reward is
+ * for finishing a recording. Looking away is feedback, not a fine.
+ *
+ * The tolerances are in "calibrated units": a deviation from the baseline
+ * captured in Settings, where iris values are a fraction of the eye opening and
+ * head values are a fraction of face width or height. They are deliberately
+ * generous — an over-eager counter teaches you to stare, not to hold contact.
+ */
+export const GAZE_CONFIG = {
+  /** How often a frame is analysed. 10/s is plenty and keeps the fan quiet. */
+  sampleIntervalMs: 100,
+
+  /**
+   * How long the gaze must stay off the lens before it counts as one glance.
+   * Anything shorter is a saccade or a blink recovery and is normal in speech.
+   */
+  driftToCountMs: 600,
+  /** How long it must come back before a new glance can be counted. */
+  returnToResetMs: 400,
+
+  /**
+   * The allowed deviation from the calibrated baseline, per axis, before the
+   * gaze counts as off the lens. Vertical is tighter because looking down at
+   * notes is the habit being trained out, and it is a smaller movement than
+   * turning to a second monitor.
+   */
+  tolerance: { x: 0.075, y: 0.055 },
+
+  /** Multiplier applied to `tolerance` by the setting in Settings. */
+  sensitivityMultiplier: {
+    relaxed: 1.5,
+    normal: 1,
+    strict: 0.7,
+  } satisfies Record<GazeSensitivity, number>,
+
+  /**
+   * How much each signal contributes to the deviation. Iris leads because the
+   * point of the exercise is eyes-on-lens; the head term catches the case where
+   * someone turns their whole head and the irises stay centred in their sockets.
+   */
+  weights: { iris: 1, head: 0.8 },
+
+  /**
+   * Eye aspect ratio below which the frame is treated as a blink and the last
+   * reading is held. Without this, every blink reads as a giant downward glance.
+   */
+  blinkEyeAspect: 0.17,
+
+  /** Calibration: how long to sample, and the minimum usable samples to accept. */
+  calibrationMs: 2500,
+  calibrationMinSamples: 12,
+  /**
+   * Reject a calibration whose samples wobble more than this (mean absolute
+   * deviation, same units as `tolerance`). It means the head was moving, and a
+   * baseline taken mid-move is worse than no baseline at all.
+   */
+  calibrationMaxWobble: 0.05,
+
+  /**
+   * Glances kept per session for the timeline. `glanceCount` still counts them
+   * all — this only caps how many get written to IndexedDB, so a rambling
+   * twenty-minute answer cannot bloat a session row.
+   */
+  maxGlancesStored: 40,
+
+  /**
+   * Below this much tracked time, the summary is not worth showing: the camera
+   * probably spent the answer warming up or looking at a ceiling.
+   */
+  minTrackedSecToReport: 5,
+} as const;
+
+/** The baseline used when nothing has been calibrated: a centred face, centred eyes. */
+export const NEUTRAL_GAZE_BASELINE = {
+  irisX: 0.5,
+  irisY: 0.5,
+  headX: 0,
+  headY: 0,
+} as const;

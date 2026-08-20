@@ -12,7 +12,7 @@
 import { expect } from 'vitest';
 import { db } from '../db/db';
 import { beginRecording, ensureBaseRecords, saveRecording, submitRatingAndReveal } from '../db/actions';
-import type { Question, SelfRating } from '../types';
+import type { GazeSummary, Question, SelfRating } from '../types';
 
 /** Matches the byte size seen in the real database when the playback bug was reported. */
 export const RECORDING_BYTES = 68882;
@@ -65,6 +65,7 @@ export async function completeSession(
   durationSec: number,
   blob: Blob,
   rating: SelfRating = 'shaky',
+  gaze?: GazeSummary,
 ): Promise<number> {
   const sessionId = (await db.sessions.add({
     questionId,
@@ -79,6 +80,7 @@ export async function completeSession(
     blob,
     mimeType: 'audio/webm',
     durationSec,
+    gaze,
   });
   expect(accepted).toBe(true);
 
@@ -95,4 +97,17 @@ export async function reloadPage(): Promise<void> {
 /** Nudge the clock so two sessions completed in a row get distinct timestamps. */
 export function tick(ms = 5): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** An eye-contact summary, defaulting to a very poor one. */
+export function gazeSummary(overrides: Partial<GazeSummary> = {}): GazeSummary {
+  return {
+    trackedSec: 100,
+    onCameraSec: 20,
+    untrackedSec: 0,
+    glanceCount: 24,
+    longestHoldSec: 2,
+    glances: [{ atSec: 4, durationSec: 3, direction: 'down' }],
+    ...overrides,
+  };
 }

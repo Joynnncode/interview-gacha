@@ -7,6 +7,7 @@
 
 import { useRef, useState } from 'react';
 import { Button, Card, SectionHeading, formatDate } from '../components/ui';
+import { GazeSettings } from '../components/GazeSettings';
 import { refreshBankFromFile } from '../db/bank';
 import { renamePet, updateSettings } from '../db/actions';
 import { downloadExport, importBundle } from '../db/transfer';
@@ -145,6 +146,8 @@ export function SettingsPage() {
           </span>
         </label>
       </Card>
+
+      <GazeSettings settings={settings} />
 
       <Card>
         <SectionHeading>Motion</SectionHeading>

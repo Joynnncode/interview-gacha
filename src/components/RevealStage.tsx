@@ -14,6 +14,7 @@ import type { PointsBreakdown } from '../game/rewards';
 import type { Badge, Question, Session } from '../types';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { AnswerText } from './AnswerText';
+import { GazeReport } from './GazeReport';
 import { Button, formatDuration } from './ui';
 
 export interface RevealStageProps {
@@ -74,6 +75,12 @@ export function RevealStage({
           ) : null}
         </div>
       ) : null}
+
+      {/*
+        Eye contact, if the camera was on. Sits after the points on purpose: the
+        reward lands first, and this is information rather than a verdict.
+      */}
+      <GazeReport summary={session.gaze} durationSec={session.durationSec} />
 
       {newBadges.length > 0 ? (
         <div className="rounded-toy-lg bg-tech/25 p-6 shadow-soft">

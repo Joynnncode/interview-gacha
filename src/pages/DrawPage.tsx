@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GachaMachine, machineDurationMs, type MachinePhase } from '../components/GachaMachine';
+import { GazeOverlay } from '../components/GazeOverlay';
 import { QuestionCard } from '../components/QuestionCard';
 import { RecordStage } from '../components/RecordStage';
 import { RateStage } from '../components/RateStage';
@@ -28,6 +29,7 @@ import {
 } from '../db/actions';
 import { db } from '../db/db';
 import { useQuestion, useQuestions, useRecordingUrl, useSession, useSettings } from '../hooks/useAppData';
+import { useGazeTracker } from '../hooks/useGazeTracker';
 import { useRecorder } from '../hooks/useRecorder';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import type { Badge, SelfRating } from '../types';
@@ -37,6 +39,17 @@ export function DrawPage() {
   const settings = useSettings();
   const recorder = useRecorder();
   const reducedMotion = useReducedMotion();
+
+  // Eye-contact training. Entirely optional: every call below is allowed to
+  // fail, and none of them may stop the microphone from recording.
+  const gazeEnabled = settings.gazeTrackingEnabled;
+  const gaze = useGazeTracker({
+    calibration: settings.gazeCalibration,
+    sensitivity: settings.gazeSensitivity,
+  });
+  // Pulled out because the hook returns a fresh object each render, while these
+  // are stable — depending on `gaze` itself would re-run the effects endlessly.
+  const { closeCamera: closeGazeCamera, openCamera: openGazeCamera } = gaze;
 
   const [sessionId, setSessionId] = useState<number | undefined>(undefined);
   const [machinePhase, setMachinePhase] = useState<MachinePhase>('idle');
@@ -79,6 +92,22 @@ export function DrawPage() {
     })();
   }, []);
 
+  /*
+   * The camera is on for exactly two stages, and off for everything else.
+   *
+   * It opens at 'drawn' rather than at 'recording' so the permission prompt and
+   * the model load happen while the question is being read, not in the middle
+   * of an answer. It closes again at 'rating' — once the numbers are collected
+   * there is no reason for the indicator light to still be on.
+   */
+  const stageForCamera = session?.stage;
+  useEffect(() => {
+    const wanted =
+      gazeEnabled && (stageForCamera === 'drawn' || stageForCamera === 'recording');
+    if (wanted) void openGazeCamera();
+    else closeGazeCamera();
+  }, [closeGazeCamera, gazeEnabled, openGazeCamera, stageForCamera]);
+
   const eligibleCount = questions ? filterEligible(questions, settings).length : 0;
 
   const handlePull = useCallback(async () => {
@@ -115,14 +144,22 @@ export function DrawPage() {
     if (!sessionId) return;
     setTooShort(false);
     const started = await recorder.start();
-    if (started) await beginRecording(sessionId);
-  }, [recorder, sessionId]);
+    if (!started) return;
+
+    // Tracking is started after the microphone and its result is ignored: a
+    // camera that will not open is a missing feature, not a failed recording.
+    if (gazeEnabled) void gaze.startTracking();
+    await beginRecording(sessionId);
+  }, [gaze, gazeEnabled, recorder, sessionId]);
 
   const handleStopRecording = useCallback(async () => {
     if (!sessionId || !question) return;
     setSaving(true);
     try {
       const result = await recorder.stop();
+      // Stop the tracker even if the recording came back empty, so the camera
+      // is not left accumulating into a session that no longer exists.
+      const gazeSummary = gaze.stopTracking();
       if (!result) return;
       const accepted = await saveRecording({
         sessionId,
@@ -130,18 +167,20 @@ export function DrawPage() {
         blob: result.blob,
         mimeType: result.mimeType,
         durationSec: result.durationSec,
+        gaze: gazeSummary ?? undefined,
       });
       setTooShort(!accepted);
     } finally {
       setSaving(false);
     }
-  }, [question, recorder, sessionId]);
+  }, [gaze, question, recorder, sessionId]);
 
   const handleCancelRecording = useCallback(async () => {
     if (!sessionId) return;
     recorder.cancel();
+    gaze.stopTracking();
     await discardRecording(sessionId);
-  }, [recorder, sessionId]);
+  }, [gaze, recorder, sessionId]);
 
   const handleRate = useCallback(
     async (rating: SelfRating) => {
@@ -181,8 +220,12 @@ export function DrawPage() {
   const showMachine = machinePhase !== 'opened';
   const stage = session?.stage;
 
+  const tracking = gazeEnabled && stage === 'recording';
+
   return (
     <div className="space-y-6">
+      <GazeOverlay tracker={gaze} active={tracking} />
+
       <AnimatePresence mode="wait">
         {showMachine ? (
           <motion.div
@@ -230,6 +273,9 @@ export function DrawPage() {
                 onCancel={() => void handleCancelRecording()}
                 saving={saving}
                 tooShort={tooShort}
+                gazeEnabled={gazeEnabled}
+                gazeState={gaze.state}
+                gazeMessage={gaze.message}
               />
             ) : null}
 
