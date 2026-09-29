@@ -288,3 +288,54 @@ export async function abandonSession(sessionId: number): Promise<void> {
     await db.sessions.delete(sessionId);
   });
 }
+
+export type StartRetryResult =
+  | { ok: true; sessionId: number }
+  /** Another attempt is waiting to be rated, and its audio must not be thrown away. */
+  | { ok: false; reason: 'unfinished' }
+  /** The question has been removed from the bank since this session happened. */
+  | { ok: false; reason: 'missing-question' };
+
+/**
+ * "Say it again" from History: open a fresh session for a question already
+ * practised, at stage 'drawn'.
+ *
+ * This is a new attempt, not an edit of the old one. The old session keeps its
+ * recording, rating, points and note untouched, and the new one has to earn its
+ * own reveal the normal way — record, then self-rate, then unlock. Because the
+ * new session starts at 'drawn', isAnswerUnlocked() is false for it and the
+ * Draw page renders the question as a SafeQuestion, exactly as for a fresh pull.
+ *
+ * Any open attempt that has no audio worth keeping (still at 'drawn', or left
+ * mid-recording) is abandoned so the Draw page resumes the retry and nothing
+ * dangles. An attempt waiting at 'rating' is left alone and the retry refused:
+ * that one has a recording, and it is not ours to discard.
+ */
+export async function startRetry(
+  fromSessionId: number,
+  now: Date = new Date(),
+): Promise<StartRetryResult> {
+  const original = await requireSession(fromSessionId);
+  const question = await db.questions.get(original.questionId);
+  if (!question) return { ok: false, reason: 'missing-question' };
+
+  return db.transaction('rw', db.sessions, db.recordings, async () => {
+    const open = await db.sessions.filter((s) => s.stage !== 'revealed').toArray();
+    if (open.some((s) => s.stage === 'rating')) return { ok: false, reason: 'unfinished' } as const;
+
+    for (const session of open) {
+      if (typeof session.id !== 'number') continue;
+      await db.recordings.where('sessionId').equals(session.id).delete();
+      await db.sessions.delete(session.id);
+    }
+
+    const sessionId = (await db.sessions.add({
+      questionId: question.id,
+      startedAt: now.toISOString(),
+      stage: 'drawn',
+      retryOf: fromSessionId,
+    })) as number;
+
+    return { ok: true, sessionId } as const;
+  });
+}

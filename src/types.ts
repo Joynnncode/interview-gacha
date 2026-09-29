@@ -121,6 +121,13 @@ export interface Session {
    * unavailable or declined — which must never block anything else.
    */
   gaze?: GazeSummary;
+  /**
+   * Set when this attempt was started from History with "Say it again" rather
+   * than drawn from the machine: the id of the session it is another go at.
+   * A retry is a full attempt in its own right — it goes through record → rate
+   * → reveal like any other — but it is not a draw, so the pity counter skips it.
+   */
+  retryOf?: number;
 }
 
 /** An audio recording, stored as a Blob. Kept in its own table so sessions stay light. */

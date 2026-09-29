@@ -134,7 +134,7 @@ export default function App() {
           >
             {screen === 'draw' ? <DrawPage /> : null}
             {screen === 'collection' ? <CollectionPage /> : null}
-            {screen === 'history' ? <HistoryPage /> : null}
+            {screen === 'history' ? <HistoryPage onPracticeAgain={() => setScreen('draw')} /> : null}
             {screen === 'settings' ? <SettingsPage /> : null}
           </motion.div>
         </AnimatePresence>

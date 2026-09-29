@@ -16,9 +16,11 @@ export interface QuestionCardProps {
   question: SafeQuestion;
   /** Shown when the pity counter forced this draw. */
   viaPity?: boolean;
+  /** Shown when this attempt was started from History rather than drawn. */
+  isRetry?: boolean;
 }
 
-export function QuestionCard({ question, viaPity }: QuestionCardProps) {
+export function QuestionCard({ question, viaPity, isRetry }: QuestionCardProps) {
   const isSSR = question.rarity === 'SSR';
 
   return (
@@ -43,6 +45,7 @@ export function QuestionCard({ question, viaPity }: QuestionCardProps) {
         <CategoryChip category={question.category} />
         <Chip>{question.topic}</Chip>
         {viaPity ? <Chip>Guaranteed pull ✨</Chip> : null}
+        {isRetry ? <Chip>Another go 🔁</Chip> : null}
       </div>
 
       {/* The thing being read out loud. Big, friendly, high line-height. */}

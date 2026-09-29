@@ -14,7 +14,12 @@ import { RATING_COPY } from '../game/flow';
 import { useHistoryEntries } from '../hooks/useAppData';
 import type { SelfRating, Session } from '../types';
 
-export function HistoryPage() {
+export interface HistoryPageProps {
+  /** Called once a retry session exists, to switch to the Draw page where it resumes. */
+  onPracticeAgain: () => void;
+}
+
+export function HistoryPage({ onPracticeAgain }: HistoryPageProps) {
   const entries = useHistoryEntries();
 
   const sessions = useMemo(() => (entries ?? []).map((entry) => entry.session), [entries]);
@@ -62,13 +67,13 @@ export function HistoryPage() {
       </Card>
 
       <Card>
-        <SectionHeading hint="Newest first. Play a recording back, edit a note, or delete audio you no longer need.">
+        <SectionHeading hint="Newest first. Play a recording back, say it again, edit a note, or delete audio you no longer need.">
           Session history
         </SectionHeading>
         <ul className="space-y-3">
           {entries.map((entry) => (
             <li key={entry.session.id}>
-              <HistoryRow entry={entry} />
+              <HistoryRow entry={entry} onPracticeAgain={onPracticeAgain} />
             </li>
           ))}
         </ul>

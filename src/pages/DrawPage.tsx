@@ -75,7 +75,9 @@ export function DrawPage() {
   }, []);
 
   /**
-   * Resume an unfinished session after a reload, so a draw is never lost.
+   * Resume an unfinished session after a reload, so a draw is never lost. This
+   * is also how "Say it again" from History arrives: it opens a session at
+   * 'drawn' and switches screens, and this picks it up.
    * A session left mid-recording goes back to 'drawn': the audio did not survive
    * the reload, so neither should the claim to have recorded it.
    */
@@ -261,7 +263,11 @@ export function DrawPage() {
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="space-y-6"
           >
-            {question ? <QuestionCard question={stripAnswer(question)} viaPity={viaPity} /> : null}
+            {question ? <QuestionCard
+                question={stripAnswer(question)}
+                viaPity={viaPity}
+                isRetry={typeof session?.retryOf === 'number'}
+              /> : null}
 
             {/* Exactly one stage panel is live at a time. */}
             {question && (stage === 'drawn' || stage === 'recording') ? (
@@ -316,7 +322,9 @@ export function DrawPage() {
                     })();
                   }}
                 >
-                  Put it back and draw something else
+                  {typeof session?.retryOf === 'number'
+                    ? 'Not now — back to the machine'
+                    : 'Put it back and draw something else'}
                 </Button>
               </div>
             ) : null}

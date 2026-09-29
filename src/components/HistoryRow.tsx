@@ -1,6 +1,6 @@
 /**
- * One past session in the history list: what you answered, the recording, and
- * the note.
+ * One past session in the history list: what you answered, the recording, the
+ * note, and a way to have another go at it.
  *
  * Its own file because it owns three small pieces of local state — playing,
  * editing a note, confirming a delete — and folding those into HistoryPage would
@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { deleteRecordingForSession, saveNote } from '../db/actions';
+import { deleteRecordingForSession, saveNote, startRetry } from '../db/actions';
 import type { HistoryEntry } from '../db/history';
 import { RATING_COPY } from '../game/flow';
 import { useRecordingUrl } from '../hooks/useAppData';
@@ -16,7 +16,13 @@ import { PetSpinner } from './PetSpinner';
 import { GazeLine } from './GazeReport';
 import { Button, RarityChip, formatDate, formatDuration } from './ui';
 
-export function HistoryRow({ entry }: { entry: HistoryEntry }) {
+export interface HistoryRowProps {
+  entry: HistoryEntry;
+  /** Switches to the Draw page once the retry session has been opened. */
+  onPracticeAgain: () => void;
+}
+
+export function HistoryRow({ entry, onPracticeAgain }: HistoryRowProps) {
   const { session, question, hasRecording } = entry;
   const sessionId = session.id;
 
@@ -51,8 +57,53 @@ export function HistoryRow({ entry }: { entry: HistoryEntry }) {
       {typeof sessionId === 'number' ? (
         <>
           <RecordingSection sessionId={sessionId} hasRecording={hasRecording} />
+          {question ? (
+            <PracticeAgain sessionId={sessionId} onStarted={onPracticeAgain} />
+          ) : null}
           <NoteSection sessionId={sessionId} note={session.note} />
         </>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Say it again: a fresh attempt at the same question
+// ---------------------------------------------------------------------------
+
+/**
+ * Opens a new session for this question and hands over to the Draw page.
+ *
+ * The new attempt is a full one: record, self-rate, then the reference answer
+ * unlocks for it. Nothing about this row changes — the old take stays here to
+ * compare against.
+ */
+function PracticeAgain({ sessionId, onStarted }: { sessionId: number; onStarted: () => void }) {
+  const [starting, setStarting] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  return (
+    <div className="mt-3">
+      <Button
+        onClick={() => {
+          setStarting(true);
+          setBlocked(false);
+          void startRetry(sessionId)
+            .then((result) => {
+              if (result.ok) onStarted();
+              else setBlocked(true);
+            })
+            .finally(() => setStarting(false));
+        }}
+        disabled={starting}
+      >
+        {starting ? 'Opening…' : '🎙️ Say it again'}
+      </Button>
+      {blocked ? (
+        <p className="mt-2 text-sm text-ink-soft">
+          There is an answer on the Draw page still waiting for your rating. Rate that one first,
+          then come back for another go.
+        </p>
       ) : null}
     </div>
   );

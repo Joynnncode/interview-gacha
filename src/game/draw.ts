@@ -148,7 +148,9 @@ export async function loadDrawContext(now: Date = new Date()): Promise<DrawConte
 
 /**
  * How many draws have happened since the last SSR came up. Every session row is
- * one draw, so this needs no separate counter to drift out of sync.
+ * one draw, so this needs no separate counter to drift out of sync — except
+ * retries started from History, which never went through the machine. Those are
+ * skipped entirely: they neither advance the counter nor reset it.
  */
 export function countDrawsSinceSSR(
   sessionsAscending: Session[],
@@ -156,6 +158,7 @@ export function countDrawsSinceSSR(
 ): number {
   let count = 0;
   for (let i = sessionsAscending.length - 1; i >= 0; i -= 1) {
+    if (typeof sessionsAscending[i].retryOf === 'number') continue;
     if (rarityById.get(sessionsAscending[i].questionId) === 'SSR') break;
     count += 1;
   }
